@@ -61,7 +61,7 @@ A comprehensive AI-powered fake news detection system that analyzes news content
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/vansh-0055/truthguard-ai.git
    cd truthguard-ai
    ```
 

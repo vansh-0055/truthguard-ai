@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Github, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Shield, Twitter, Linkedin, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -24,9 +24,7 @@ const Footer = () => {
                             <a href="#" className="p-2 bg-slate-900 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                                 <Twitter className="w-5 h-5" />
                             </a>
-                            <a href="#" className="p-2 bg-slate-900 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
-                                <Github className="w-5 h-5" />
-                            </a>
+
                             <a href="#" className="p-2 bg-slate-900 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                                 <Linkedin className="w-5 h-5" />
                             </a>
@@ -36,7 +34,7 @@ const Footer = () => {
                     <div>
                         <h4 className="text-white font-semibold mb-6">Platform</h4>
                         <ul className="space-y-4">
-                            <li><Link to="/check" className="text-slate-400 hover:text-blue-400 transition-colors">News Achecker</Link></li>
+                            <li><Link to="/check" className="text-slate-400 hover:text-blue-400 transition-colors">News Checker</Link></li>
                             <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Browser Extension</a></li>
                             <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">API Access</a></li>
                             <li><a href="#" className="text-slate-400 hover:text-blue-400 transition-colors">Pricing</a></li>

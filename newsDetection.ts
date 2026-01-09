@@ -119,25 +119,50 @@ Provide your analysis in the following JSON format:
 // ============================================
 // GOOGLE FACT CHECK TOOLS API INTEGRATION
 // ============================================
-async function searchFactChecks(content: string): Promise<any[]> {
+// ============================================
+// GOOGLE FACT CHECK TOOLS API INTEGRATION
+// ============================================
+async function searchFactChecks(content: string, url?: string): Promise<any[]> {
   if (!hasFactCheckAPI) {
     console.log('Fact Check API not configured, skipping fact-check search');
     return [];
   }
 
   try {
-    const query = encodeURIComponent(content.substring(0, 100));
-    const response = await fetch(
-      `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${query}&key=${FACT_CHECK_API_KEY}`
-    );
+    let queries = [];
 
-    if (!response.ok) {
-      console.error('Fact Check API error:', response.status);
-      return [];
+    // Priority 1: Check the specific URL if provided
+    if (url) {
+      queries.push(encodeURIComponent(url));
     }
 
-    const data = await response.json();
-    return data.claims || [];
+    // Priority 2: Check the content (first 100-200 chars)
+    if (content) {
+      // Clean content to remove special chars that might break the query
+      const cleanContent = content.substring(0, 200).replace(/[^\w\s]/gi, ' ');
+      queries.push(encodeURIComponent(cleanContent));
+    }
+
+    // Try queries sequentially until we find results
+    for (const q of queries) {
+      if (!q.trim()) continue;
+
+      const response = await fetch(
+        `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${q}&key=${FACT_CHECK_API_KEY}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.claims && data.claims.length > 0) {
+          console.log(`Found fact checks for query: ${q}`);
+          return data.claims;
+        }
+      } else {
+        console.error('Fact Check API error:', response.status);
+      }
+    }
+
+    return [];
   } catch (error) {
     console.error('Fact Check API error:', error);
     return [];
@@ -185,6 +210,79 @@ async function verifyWithNewsAPI(content: string): Promise<TrustedSource[]> {
 }
 
 // ============================================
+// NEW: WORLDWIDE NEWS & RECENT FACT CHECKS
+// ============================================
+export async function getWorldwideNews(): Promise<any[]> {
+  if (!hasNewsAPI) {
+    console.log('NewsAPI not configured, using mock news');
+    // Return some mock news if API is missing
+    return [
+      {
+        title: "Global Summit on Climate Change Reaches Historic Agreement",
+        description: "World leaders have agreed to a new set of binding targets to reduce carbon emissions by 2030...",
+        urlToImage: "https://images.unsplash.com/photo-1621274790572-7c32596bc67f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80",
+        url: "#",
+        source: { name: "Global News Network" },
+        publishedAt: new Date().toISOString()
+      },
+      {
+        title: "Tech Giant Unveils Revolutionary AI Assistant",
+        description: "The new AI model promises to transform how we interact with digital devices and the internet...",
+        urlToImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1932",
+        url: "#",
+        source: { name: "Tech Weekly" },
+        publishedAt: new Date(Date.now() - 3600000).toISOString()
+      },
+      {
+        title: "SpaceX Successfully Launches New Satellite Constellation",
+        description: "The mission marks another milestone in the company's ambitious plan to provide global internet coverage...",
+        urlToImage: "https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?auto=format&fit=crop&q=80&w=2070",
+        url: "#",
+        source: { name: "Space Daily" },
+        publishedAt: new Date(Date.now() - 7200000).toISOString()
+      }
+    ];
+  }
+
+  try {
+    const response = await fetch(
+      `https://newsapi.org/v2/top-headlines?language=en&category=general&pageSize=12&apiKey=${NEWS_API_KEY}`
+    );
+
+    if (!response.ok) throw new Error('Failed to fetch news');
+
+    const data = await response.json();
+    return data.articles.filter((article: any) => article.urlToImage && article.title && article.description);
+  } catch (error) {
+    console.error('Error fetching worldwide news:', error);
+    return [];
+  }
+}
+
+export async function getRecentFactChecks(): Promise<any[]> {
+  if (!hasFactCheckAPI) {
+    console.log('Fact Check API not configured, using mock checks');
+    return []; // The UI will handle empty state or we could provide mocks here too if needed, but the UI component has mocks currently.
+  }
+
+  try {
+    // Search for general recent misinformation or trending topics
+    // We use a broad query like "fake news" or "viral" or specific high-risk topics
+    const response = await fetch(
+      `https://factchecktools.googleapis.com/v1alpha1/claims:search?query=viral&key=${FACT_CHECK_API_KEY}`
+    );
+
+    if (!response.ok) throw new Error('Failed to fetch fact checks');
+
+    const data = await response.json();
+    return data.claims || [];
+  } catch (error) {
+    console.error('Error fetching fact checks:', error);
+    return [];
+  }
+}
+
+// ============================================
 // MOCK DETECTION (FALLBACK)
 // ============================================
 function detectKeywordMatches(content: string, keywords: string[]): string[] {
@@ -226,9 +324,9 @@ export const detectFakeNews = async (content: string, sourceUrl?: string): Promi
 
     // Run all API checks in parallel
     const [gemini, factChecks, newsAPI] = await Promise.all([
-      analyzeWithGeminiAI(content),
-      searchFactChecks(content),
-      verifyWithNewsAPI(content)
+      analyzeWithGeminiAI(content || sourceUrl || ""),
+      searchFactChecks(content, sourceUrl),
+      verifyWithNewsAPI(content || sourceUrl || "")
     ]);
 
     geminiResult = gemini;

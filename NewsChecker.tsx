@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Upload, FileText, Link as LinkIcon, Search, AlertCircle, CheckCircle, Info, ArrowLeft, Users } from 'lucide-react';
+import { Upload, FileText, Link as LinkIcon, Search, AlertCircle, CheckCircle, Info, ArrowLeft, Users, Share2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { detectFakeNews, saveNewsQuery } from './newsDetection';
 import { DetectionResult } from './types';
 import toast from 'react-hot-toast';
 
 const NewsChecker: React.FC = () => {
-  const [content, setContent] = useState('');
+  const location = useLocation();
+  const [content, setContent] = useState(location.state?.content || '');
   const [sourceUrl, setSourceUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
@@ -38,6 +39,14 @@ const NewsChecker: React.FC = () => {
       toast.error('An error occurred during analysis');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (result) {
+      const url = `${window.location.origin}/check?id=${result.id}`;
+      navigator.clipboard.writeText(url);
+      toast.success('Report link copied to clipboard!');
     }
   };
 
@@ -147,17 +156,27 @@ const NewsChecker: React.FC = () => {
                 <button
                   onClick={handleAnalyze}
                   disabled={loading || (!content && !sourceUrl)}
-                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 flex items-center justify-center"
+                  className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-95 flex items-center justify-center relative overflow-hidden group"
                 >
+                  <motion.div
+                    className="absolute inset-x-0 bottom-0 h-1 bg-white/20"
+                    initial={{ width: "0%" }}
+                    animate={{ width: loading ? "100%" : "0%" }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  />
                   {loading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                      Analyzing authenticity...
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full mr-3"
+                      />
+                      <span>Neural Analysis in Progress...</span>
                     </>
                   ) : (
                     <>
-                      <Search className="w-5 h-5 mr-2" />
-                      Analyze Content
+                      <Search className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+                      <span>Analyze Authenticity</span>
                     </>
                   )}
                 </button>
@@ -166,20 +185,38 @@ const NewsChecker: React.FC = () => {
 
             {/* Quick Test Buttons */}
             <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => { setInputMode('text'); setContent("India's Chandrayaan-3 mission successfully landed on the moon's south pole, making it the first country to achieve this historic feat."); }}
-                className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl text-left hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group"
-              >
-                <span className="text-emerald-400 text-sm font-semibold mb-1 block group-hover:text-emerald-300">Test Real News</span>
-                <span className="text-slate-500 text-xs line-clamp-1">Chandrayaan-3 landing success...</span>
-              </button>
-              <button
-                onClick={() => { setInputMode('text'); setContent("Aliens have landed in Times Square! NASA confirms the extraterrestrial visitors are friendly."); }}
-                className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl text-left hover:border-red-500/50 hover:bg-red-500/5 transition-all group"
-              >
-                <span className="text-red-400 text-sm font-semibold mb-1 block group-hover:text-red-300">Test Fake News</span>
-                <span className="text-slate-500 text-xs line-clamp-1">Aliens in Times Square...</span>
-              </button>
+              {[
+                {
+                  type: 'real',
+                  title: 'Test Real News',
+                  text: "India's Chandrayaan-3 mission successfully landed on the moon's south pole...",
+                  color: 'emerald'
+                },
+                {
+                  type: 'fake',
+                  title: 'Test Fake News',
+                  text: "Aliens have landed in Times Square! NASA confirms the extraterrestrial visitors...",
+                  color: 'red'
+                }
+              ].map((test, i) => (
+                <motion.button
+                  key={test.type}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + (i * 0.1) }}
+                  onClick={() => {
+                    setInputMode('text');
+                    setContent(test.type === 'real'
+                      ? "India's Chandrayaan-3 mission successfully landed on the moon's south pole, making it the first country to achieve this historic feat."
+                      : "Aliens have landed in Times Square! NASA confirms the extraterrestrial visitors are friendly.");
+                  }}
+                  className={`p-4 bg-slate-900/50 border border-slate-800 rounded-xl text-left hover:border-${test.color}-500/50 hover:bg-${test.color}-500/5 transition-all group overflow-hidden relative`}
+                >
+                  <div className={`absolute top-0 right-0 w-16 h-16 bg-${test.color}-500/5 rounded-full blur-2xl group-hover:bg-${test.color}-500/10 transition-colors`} />
+                  <span className={`text-${test.color}-400 text-sm font-semibold mb-1 block group-hover:text-${test.color}-300 relative z-10`}>{test.title}</span>
+                  <span className="text-slate-500 text-xs line-clamp-1 relative z-10">{test.text}</span>
+                </motion.button>
+              ))}
             </div>
           </div>
 
@@ -222,6 +259,14 @@ const NewsChecker: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    <button
+                      onClick={handleShare}
+                      className="w-full mt-4 py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium flex items-center justify-center transition-colors border border-white/10"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Share Analysis Report
+                    </button>
                   </div>
 
                   {/* Sources List */}
@@ -252,24 +297,30 @@ const NewsChecker: React.FC = () => {
                     ) : (
                       <div className="text-center py-6 text-slate-500">
                         <p className="text-sm mb-3">No direct matches found.</p>
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(content.substring(0, 50))}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300"
-                        >
-                          Search Google <LinkIcon className="w-3 h-3 ml-1" />
-                        </a>
+                        <p className="text-xs">Try the Google Search below.</p>
                       </div>
                     )}
+
+                    <div className="mt-6 pt-6 border-t border-slate-800">
+                      <a
+                        href={`https://www.google.com/search?q=${encodeURIComponent((content || sourceUrl || "").substring(0, 50))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl flex items-center justify-center transition-colors border border-white/10"
+                      >
+                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4 mr-2" />
+                        Search related news on Google
+                        <ExternalLink className="w-4 h-4 ml-2" />
+                      </a>
+                    </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 };
 

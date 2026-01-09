@@ -1,97 +1,121 @@
-import React from 'react';
-import { AlertTriangle, ExternalLink, Share2, ThumbsDown, Shield } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { AlertTriangle, ExternalLink, Share2, ThumbsDown, Shield, Sparkles, AlertOctagon } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { getRecentFactChecks } from './newsDetection';
 
 const FakeNewsFeed: React.FC = () => {
-    // Mock data for the feed
-    const fakeNews = [
+    const [factChecks, setFactChecks] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchChecks = async () => {
+            const data = await getRecentFactChecks();
+            setFactChecks(data);
+            setLoading(false);
+        };
+        fetchChecks();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-red-500 border-t-transparent"></div>
+            </div>
+        );
+    }
+
+    // Mock fallback if API returns empty (so user sees something)
+    const displayItems = factChecks.length > 0 ? factChecks : [
         {
-            id: 1,
-            title: "Aliens Land in Central Park",
-            excerpt: "Reports appearing on social media claim extraterrestrial beings have set up a base...",
-            source: "unknown-blog.xyz",
-            date: "2 hours ago",
-            debunk_source: "NASA Official Statement",
-            confidence: 0.98
+            text: "Aliens Land in Central Park",
+            claimant: "Social Media Users",
+            claimReview: [{
+                publisher: { name: "NASA Official" },
+                textualRating: "False",
+                title: "No alien landing has occurred.",
+                url: "#"
+            }]
         },
         {
-            id: 2,
-            title: "Celebrity Secret Mars Colony",
-            excerpt: "Leaked documents supposedly prove a secret colony on Mars run by Hollywood elites...",
-            source: "conspiracy-daily.net",
-            date: "5 hours ago",
-            debunk_source: "SpaceX Public Records",
-            confidence: 0.95
-        },
-        {
-            id: 3,
-            title: "Chocolate Cures All Known Diseases",
-            excerpt: "A new 'study' claims eating 1kg of chocolate daily reverses aging and cures everything...",
-            source: "health-miracle-fake.com",
-            date: "1 day ago",
-            debunk_source: "WHO Health Advisory",
-            confidence: 0.99
+            text: "Celebrity Secret Mars Colony",
+            claimant: "Conspiracy Blog",
+            claimReview: [{
+                publisher: { name: "SpaceX" },
+                textualRating: "Fake",
+                title: "Mars colony rumors are unfounded.",
+                url: "#"
+            }]
         }
     ];
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <AlertTriangle className="w-6 h-6 text-red-500 mr-2" />
-                Recent Misinformation Alerts
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
+                <AlertOctagon className="w-6 h-6 text-red-500 mr-2" />
+                Fact Check Feed - Google Verified
             </h2>
 
-            <div className="grid gap-6">
-                {fakeNews.map((item) => (
-                    <div key={item.id} className="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden hover:shadow-md transition-shadow">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-2">{item.title}</h3>
-                                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs font-medium">Fake News</span>
-                                        <span>•</span>
-                                        <span>{item.source}</span>
-                                        <span>•</span>
-                                        <span>{item.date}</span>
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ staggerChildren: 0.1 }}
+                className="grid gap-6"
+            >
+                {displayItems.map((item, i) => {
+                    const review = item.claimReview?.[0] || {};
+                    const rating = review.textualRating || "Disputed";
+                    const isFake = rating.toLowerCase().includes('false') || rating.toLowerCase().includes('fake') || rating.toLowerCase().includes('pants on fire');
+
+                    return (
+                        <motion.div
+                            key={i}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-red-100 dark:border-red-900/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
+                        >
+                            <div className="p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <div className="flex items-center space-x-2 mb-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${isFake ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'}`}>
+                                                {rating}
+                                            </span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                Claim by: {item.claimant || "Unknown"}
+                                            </span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{item.text}</h3>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="block text-2xl font-bold text-red-600">{(item.confidence * 100).toFixed(0)}%</span>
-                                    <span className="text-xs text-gray-500">Fake Probability</span>
+
+                                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 border border-slate-100 dark:border-slate-800">
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium flex items-center mb-1">
+                                        <Shield className="w-4 h-4 mr-2 text-blue-500" />
+                                        Fact Check by {review.publisher?.name || "Independent Checker"}:
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">
+                                        "{review.title || item.text}"
+                                    </p>
+                                </div>
+
+                                <div className="mt-4 flex items-center justify-end">
+                                    <a
+                                        href={review.url || "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                                    >
+                                        View Full Report <ExternalLink className="w-4 h-4 ml-1" />
+                                    </a>
                                 </div>
                             </div>
-
-                            <p className="text-gray-600 mb-4">{item.excerpt}</p>
-
-                            <div className="bg-red-50 rounded-lg p-4 border border-red-100">
-                                <p className="text-sm text-red-800 font-medium flex items-center mb-1">
-                                    <Shield className="w-4 h-4 mr-2" /> Fact Check:
-                                </p>
-                                <p className="text-sm text-red-700">
-                                    Debunked by <span className="font-semibold">{item.debunk_source}</span>. There is no evidence supporting these claims.
-                                </p>
-                            </div>
-
-                            <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-4">
-                                <button className="text-sm text-gray-500 hover:text-blue-600 flex items-center transition-colors">
-                                    <ExternalLink className="w-4 h-4 mr-1" /> View Source
-                                </button>
-                                <div className="flex space-x-3">
-                                    <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                                        <ThumbsDown className="w-4 h-4" />
-                                    </button>
-                                    <button className="text-gray-400 hover:text-gray-600 transition-colors">
-                                        <Share2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                        </motion.div>
+                    );
+                })}
+            </motion.div>
         </div>
     );
 };
-
 
 export default FakeNewsFeed;

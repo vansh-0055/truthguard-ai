@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, CheckCircle, AlertTriangle, ArrowRight, Activity, Zap, Users, Globe } from 'lucide-react';
+import { Shield, ArrowRight, Zap, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import NewsTicker from './NewsTicker';
 import HowItWorks from './HowItWorks';
@@ -21,7 +21,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-x-hidden relative">
+    <div className="min-h-screen bg-slate-950 dark:bg-slate-950 overflow-x-hidden relative transition-colors duration-500">
       {/* Animated Background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
         <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] animate-blob" />
@@ -49,9 +49,19 @@ const Home: React.FC = () => {
               AI-Powered Fact Checking v2.0
             </motion.div>
 
-            <motion.h1 variants={itemVariants} className="text-5xl md:text-8xl font-bold tracking-tight text-white mb-8">
-              Truth in the <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400">
+            <motion.h1
+              variants={itemVariants}
+              className="text-5xl md:text-8xl font-bold tracking-tight text-white mb-8 leading-tight"
+            >
+              <motion.span
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+              >
+                Truth in the
+              </motion.span>
+              <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 inline-block animate-gradient">
                 Age of AI
               </span>
             </motion.h1>
@@ -71,6 +81,21 @@ const Home: React.FC = () => {
               <Link to="/register" className="w-full sm:w-auto px-8 py-4 bg-slate-800 text-white rounded-full font-bold hover:bg-slate-700 transition-all flex items-center justify-center border border-slate-700">
                 Join Community
               </Link>
+            </motion.div>
+
+            {/* Hero Illustration */}
+            <motion.div
+              variants={itemVariants}
+              className="mt-16 relative"
+            >
+              <div className="relative max-w-4xl mx-auto">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 blur-3xl"></div>
+                <img
+                  src="/images/hero-illustration.png"
+                  alt="AI-powered fake news detection"
+                  className="relative z-10 w-full h-auto rounded-2xl shadow-2xl"
+                />
+              </div>
             </motion.div>
           </motion.div>
 
