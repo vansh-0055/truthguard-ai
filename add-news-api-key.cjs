@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const envPath = path.join(__dirname, '.env');
-const newsApiKey = '4b098418476545868075dc4c730ab642';
+const newsApiKey = '5e617def087f2abec86080b4306bbfe5';
 
 // Read existing .env file or create template
 let envContent = '';

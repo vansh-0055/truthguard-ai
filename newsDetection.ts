@@ -212,51 +212,72 @@ async function verifyWithNewsAPI(content: string): Promise<TrustedSource[]> {
 // ============================================
 // NEW: WORLDWIDE NEWS & RECENT FACT CHECKS
 // ============================================
+const MOCK_NEWS = [
+  {
+    title: "Global Summit on Climate Change Reaches Historic Agreement",
+    description: "World leaders have agreed to a new set of binding targets to reduce carbon emissions by 2030...",
+    urlToImage: "https://images.unsplash.com/photo-1621274790572-7c32596bc67f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80",
+    url: "#",
+    source: { name: "Global News Network" },
+    publishedAt: new Date().toISOString()
+  },
+  {
+    title: "Tech Giant Unveils Revolutionary AI Assistant",
+    description: "The new AI model promises to transform how we interact with digital devices and the internet...",
+    urlToImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1932",
+    url: "#",
+    source: { name: "Tech Weekly" },
+    publishedAt: new Date(Date.now() - 3600000).toISOString()
+  },
+  {
+    title: "SpaceX Successfully Launches New Satellite Constellation",
+    description: "The mission marks another milestone in the company's ambitious plan to provide global internet coverage...",
+    urlToImage: "https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?auto=format&fit=crop&q=80&w=2070",
+    url: "#",
+    source: { name: "Space Daily" },
+    publishedAt: new Date(Date.now() - 7200000).toISOString()
+  }
+];
+
 export async function getWorldwideNews(): Promise<any[]> {
-  if (!hasNewsAPI) {
-    console.log('NewsAPI not configured, using mock news');
-    // Return some mock news if API is missing
-    return [
-      {
-        title: "Global Summit on Climate Change Reaches Historic Agreement",
-        description: "World leaders have agreed to a new set of binding targets to reduce carbon emissions by 2030...",
-        urlToImage: "https://images.unsplash.com/photo-1621274790572-7c32596bc67f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80",
-        url: "#",
-        source: { name: "Global News Network" },
-        publishedAt: new Date().toISOString()
-      },
-      {
-        title: "Tech Giant Unveils Revolutionary AI Assistant",
-        description: "The new AI model promises to transform how we interact with digital devices and the internet...",
-        urlToImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1932",
-        url: "#",
-        source: { name: "Tech Weekly" },
-        publishedAt: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        title: "SpaceX Successfully Launches New Satellite Constellation",
-        description: "The mission marks another milestone in the company's ambitious plan to provide global internet coverage...",
-        urlToImage: "https://images.unsplash.com/photo-1516849841032-87cbac4d88f7?auto=format&fit=crop&q=80&w=2070",
-        url: "#",
-        source: { name: "Space Daily" },
-        publishedAt: new Date(Date.now() - 7200000).toISOString()
+  // 1. Try Official NewsAPI if key exists
+  if (hasNewsAPI) {
+    try {
+      console.log('Fetching from Official NewsAPI...');
+      const response = await fetch(
+        `https://newsapi.org/v2/top-headlines?language=en&category=general&pageSize=100&apiKey=${NEWS_API_KEY}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const articles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
+        if (articles.length > 0) return articles;
+      } else {
+        console.warn('Official NewsAPI failed, trying fallback...');
       }
-    ];
+    } catch (error) {
+      console.error('Official NewsAPI error:', error);
+    }
   }
 
+  // 2. Try Open NewsAPI Mirror (saurav.tech) - accurate fallback for frontend-only usage
   try {
-    const response = await fetch(
-      `https://newsapi.org/v2/top-headlines?language=en&category=general&pageSize=12&apiKey=${NEWS_API_KEY}`
-    );
+    console.log('Fetching from Open NewsAPI Mirror...');
+    // Fetch US and India headlines to get a mix or just US
+    const response = await fetch('https://saurav.tech/NewsAPI/top-headlines/category/general/us.json');
 
-    if (!response.ok) throw new Error('Failed to fetch news');
-
-    const data = await response.json();
-    return data.articles.filter((article: any) => article.urlToImage && article.title && article.description);
+    if (response.ok) {
+      const data = await response.json();
+      const articles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
+      if (articles.length > 0) return articles;
+    }
   } catch (error) {
-    console.error('Error fetching worldwide news:', error);
-    return [];
+    console.error('Open NewsAPI Mirror error:', error);
   }
+
+  // 3. Fallback to Mock Data
+  console.log('All APIs failed, using mock news');
+  return MOCK_NEWS;
 }
 
 export async function getRecentFactChecks(): Promise<any[]> {
@@ -331,6 +352,7 @@ export const detectFakeNews = async (content: string, sourceUrl?: string): Promi
 
     geminiResult = gemini;
     factCheckResults = factChecks;
+
     newsAPIResults = newsAPI;
 
     // Also check knowledge base

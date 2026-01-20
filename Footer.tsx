@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Twitter, Linkedin, Mail } from 'lucide-react';
+import { Twitter, Linkedin, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
@@ -8,13 +8,12 @@ const Footer = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid md:grid-cols-4 gap-12 mb-12">
                     <div className="col-span-1 md:col-span-2">
-                        <Link to="/" className="flex items-center space-x-2 mb-6">
-                            <div className="bg-gradient-to-tr from-blue-600 to-purple-600 p-2 rounded-lg">
-                                <Shield className="w-6 h-6 text-white" />
-                            </div>
-                            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                                TruthGuard AI
-                            </span>
+                        <Link to="/" className="flex items-center mb-6">
+                            <img
+                                src="/images/logo.png"
+                                alt="TruthGuard AI"
+                                className="h-14 w-auto object-contain rounded-lg bg-white"
+                            />
                         </Link>
                         <p className="text-slate-400 mb-6 max-w-sm">
                             Combating misinformation with state-of-the-art Artificial Intelligence.

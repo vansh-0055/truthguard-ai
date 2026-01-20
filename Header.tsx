@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, User, LogOut, Sun, Moon } from 'lucide-react';
+import { User, LogOut, Sun, Moon } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useTheme } from './ThemeContext';
 import toast from 'react-hot-toast';
@@ -25,13 +25,12 @@ const Header: React.FC = () => {
     <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-2 group">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg group-hover:shadow-lg transition-all">
-              <Shield className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              TruthGuard AI
-            </span>
+          <Link to="/" className="flex items-center">
+            <img
+              src="/images/logo.png"
+              alt="TruthGuard AI"
+              className="h-12 w-auto object-contain rounded-lg bg-white"
+            />
           </Link>
 
           <nav className="hidden md:flex space-x-8">
