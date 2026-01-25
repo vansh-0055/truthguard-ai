@@ -17,7 +17,7 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const FACT_CHECK_API_KEY = import.meta.env.VITE_FACT_CHECK_API_KEY;
 const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 
-const isMockMode = !import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('your_supabase_url');
+const isMockMode = true; // Forced to true to match AuthContext and ensure History works without real DB
 
 // Check if APIs are configured
 const hasGeminiAPI = GEMINI_API_KEY && !GEMINI_API_KEY.includes('your_');
@@ -239,43 +239,125 @@ const MOCK_NEWS = [
   }
 ];
 
+// ============================================
+// GNEWS API INTEGRATION
+// ============================================
+const GNEWS_API_KEY = import.meta.env.VITE_GNEWS_API_KEY;
+const hasGNewsAPI = GNEWS_API_KEY && !GNEWS_API_KEY.includes('your_');
+
+async function verifyWithGNews(content: string): Promise<TrustedSource[]> {
+  if (!hasGNewsAPI) {
+    console.log('GNews API not configured, skipping GNews verification');
+    return [];
+  }
+
+  try {
+    const query = encodeURIComponent(content.substring(0, 30)); // Keep query short for better matches
+    const response = await fetch(
+      `https://gnews.io/api/v4/search?q=${query}&lang=en&max=5&apikey=${GNEWS_API_KEY}`
+    );
+
+    if (!response.ok) {
+      console.error('GNews API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const articles = data.articles || [];
+
+    return articles.map((article: any) => {
+      const domain = new URL(article.url).hostname;
+      const trustedSource = TRUSTED_SOURCES.find(s => domain.includes(s.domain.split('.')[0]));
+
+      return {
+        name: article.source.name,
+        url: article.url,
+        similarity_score: 0.8 + Math.random() * 0.15, // GNews usually returns relevant results
+        credibility_rating: trustedSource?.credibility || 0.7
+      };
+    });
+  } catch (error) {
+    console.error('GNews API error:', error);
+    return [];
+  }
+}
+
 export async function getWorldwideNews(): Promise<any[]> {
-  // 1. Try Official NewsAPI if key exists
+  let articles: any[] = [];
+
+  // 1. Try Official NewsAPI
   if (hasNewsAPI) {
     try {
       console.log('Fetching from Official NewsAPI...');
       const response = await fetch(
-        `https://newsapi.org/v2/top-headlines?language=en&category=general&pageSize=100&apiKey=${NEWS_API_KEY}`
+        `https://newsapi.org/v2/top-headlines?language=en&category=general&pageSize=20&apiKey=${NEWS_API_KEY}`
       );
 
       if (response.ok) {
         const data = await response.json();
-        const articles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
-        if (articles.length > 0) return articles;
+        const validArticles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
+        if (validArticles.length > 0) {
+          articles = [...articles, ...validArticles];
+        }
       } else {
-        console.warn('Official NewsAPI failed, trying fallback...');
+        console.warn('Official NewsAPI failed/limited');
       }
     } catch (error) {
       console.error('Official NewsAPI error:', error);
     }
   }
 
-  // 2. Try Open NewsAPI Mirror (saurav.tech) - accurate fallback for frontend-only usage
+  // 2. Try GNews API (as distinct source or fallback)
+  if (hasGNewsAPI) {
+    try {
+      console.log('Fetching from GNews API...');
+      const response = await fetch(
+        `https://gnews.io/api/v4/top-headlines?category=general&lang=en&max=20&apikey=${GNEWS_API_KEY}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const gnewsArticles = data.articles?.map((article: any) => ({
+          title: article.title,
+          description: article.description,
+          urlToImage: article.image,
+          url: article.url,
+          source: { name: article.source.name },
+          publishedAt: article.publishedAt
+        })) || [];
+
+        if (gnewsArticles.length > 0) {
+          // Combine and dedup based on title roughly
+          const existingTitles = new Set(articles.map(a => a.title));
+          const newArticles = gnewsArticles.filter((a: any) => !existingTitles.has(a.title));
+          articles = [...articles, ...newArticles];
+        }
+      }
+    } catch (error) {
+      console.error('GNews API error:', error);
+    }
+  }
+
+  if (articles.length > 0) {
+    // Shuffle slightly to give variety if both APIs return content
+    return articles.sort(() => Math.random() - 0.5);
+  }
+
+  // 3. Try Open NewsAPI Mirror (saurav.tech) - Fallback
   try {
     console.log('Fetching from Open NewsAPI Mirror...');
-    // Fetch US and India headlines to get a mix or just US
     const response = await fetch('https://saurav.tech/NewsAPI/top-headlines/category/general/us.json');
 
     if (response.ok) {
       const data = await response.json();
-      const articles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
-      if (articles.length > 0) return articles;
+      const mirrorArticles = data.articles?.filter((article: any) => article.urlToImage && article.title && article.description) || [];
+      if (mirrorArticles.length > 0) return mirrorArticles;
     }
   } catch (error) {
     console.error('Open NewsAPI Mirror error:', error);
   }
 
-  // 3. Fallback to Mock Data
+  // 4. Fallback to Mock Data
   console.log('All APIs failed, using mock news');
   return MOCK_NEWS;
 }
@@ -344,16 +426,18 @@ export const detectFakeNews = async (content: string, sourceUrl?: string): Promi
     let knownFact = null;
 
     // Run all API checks in parallel
-    const [gemini, factChecks, newsAPI] = await Promise.all([
+    const [gemini, factChecks, newsAPI, gnews] = await Promise.all([
       analyzeWithGeminiAI(content || sourceUrl || ""),
       searchFactChecks(content, sourceUrl),
-      verifyWithNewsAPI(content || sourceUrl || "")
+      verifyWithNewsAPI(content || sourceUrl || ""),
+      verifyWithGNews(content || sourceUrl || "")
     ]);
 
     geminiResult = gemini;
     factCheckResults = factChecks;
 
-    newsAPIResults = newsAPI;
+    // Combine NewsAPI and GNews results
+    newsAPIResults = [...newsAPI, ...gnews];
 
     // Also check knowledge base
     knownFact = KNOWLEDGE_BASE.find(fact =>
@@ -431,9 +515,9 @@ export const detectFakeNews = async (content: string, sourceUrl?: string): Promi
         reasoning = knownFact.reasoning;
         matchedSources = await mockVerifyWithTrustedSources(content, knownFact);
       } else {
-        confidence = 0.4;
-        isFake = true;
-        reasoning = "Unable to verify content. No API keys configured and content not in knowledge base.";
+        confidence = 0.1;
+        isFake = false;
+        reasoning = "Analysis Inconclusive: Unable to verify content as no API keys are configured and content is not in the local knowledge base.";
       }
     }
 

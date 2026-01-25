@@ -281,7 +281,7 @@ const NewsChecker: React.FC = () => {
                         {result.is_fake ? <AlertCircle className="w-10 h-10 text-red-400" /> : <CheckCircle className="w-10 h-10 text-emerald-400" />}
                         <div>
                           <h3 className={`text-2xl font-bold ${getResultColor(result.is_fake, result.confidence_score)}`}>
-                            {result.is_fake ? 'Potentially Fake' : 'Appears Genuine'}
+                            {result.confidence_score < 0.6 ? 'Analysis Inconclusive' : (result.is_fake ? 'Potentially Fake' : 'Appears Genuine')}
                           </h3>
                           <p className="text-white/60 text-sm">{(result.confidence_score * 100).toFixed(1)}% Confidence</p>
                         </div>
