@@ -21,6 +21,14 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadStats();
+
+    // Listen for history updates
+    const handleHistoryUpdate = () => {
+      loadStats();
+    };
+
+    window.addEventListener('historyUpdated', handleHistoryUpdate);
+    return () => window.removeEventListener('historyUpdated', handleHistoryUpdate);
   }, []);
 
   const loadStats = async () => {

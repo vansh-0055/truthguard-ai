@@ -5,6 +5,11 @@ import { useLocation, Link } from 'react-router-dom';
 import { detectFakeNews, saveNewsQuery } from './newsDetection';
 import { DetectionResult } from './types';
 import toast from 'react-hot-toast';
+import * as mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set worker for PDF.js (crucial for Vite)
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const NewsChecker: React.FC = () => {
   const location = useLocation();
@@ -50,16 +55,44 @@ const NewsChecker: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // Handle DOCX
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        setContent(result.value);
+        toast.success('Document loaded successfully');
+      } else if (file.type === 'application/pdf') {
+        // Handle PDF
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+
+        setContent(fullText);
+        toast.success('PDF loaded successfully');
+      } else {
+        // Handle Text Files
+        const text = await file.text();
         setContent(text);
-      };
-      reader.readAsText(file);
-      toast.success('File uploaded successfully');
+        toast.success('File loaded successfully');
+      }
+    } catch (error) {
+      console.error('File parsing error:', error);
+      toast.error('Failed to read file. Please copy/paste content instead.');
+    } finally {
+      setLoading(false);
     }
   };
 

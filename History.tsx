@@ -23,6 +23,13 @@ const History: React.FC = () => {
 
     useEffect(() => {
         loadHistory();
+
+        const handleHistoryUpdate = () => {
+            loadHistory();
+        };
+
+        window.addEventListener('historyUpdated', handleHistoryUpdate);
+        return () => window.removeEventListener('historyUpdated', handleHistoryUpdate);
     }, []);
 
     const loadHistory = async () => {

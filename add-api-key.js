@@ -1,8 +1,12 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const envPath = path.join(__dirname, '.env');
-const apiKey = 'AIzaSyCVNzi5YY5CpSx_Ab3Az1n4pKPakGAizj8';
+const apiKey = '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';
 
 // Read existing .env file
 let envContent = '';
